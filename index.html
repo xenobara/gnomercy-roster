@@ -107,17 +107,27 @@ footer{text-align:center;font-size:12px;color:#6f6656;margin-top:20px}
 <div id="mine"></div>
 <form id="f" autocomplete="off">
 <label for="name">Your name</label><input id="name" maxlength="24" required placeholder="What should the Council call you?">
-<div class="row">
+<div class="row" style="grid-template-columns:1fr 1fr">
 <div><label for="cls">Class</label><select id="cls" required></select></div>
-<div><label for="spec">Spec</label><select id="spec" required></select></div>
 <div><label for="race">Race</label><select id="race" required></select></div>
 </div>
+<div class="row" style="grid-template-columns:1fr 1fr">
+<div><label for="specPve">PvE Spec</label><select id="specPve" required></select></div>
+<div><label for="specPvp">PvP Spec</label><select id="specPvp" required></select></div>
+</div>
+<label class="toggle"><input type="checkbox" id="samePvp" checked> Same as PvE Spec</label>
 <label class="toggle"><input type="checkbox" id="has2"> Add a 2nd choice (optional)</label>
-<div class="second" id="sec" hidden><div class="row">
+<div class="second" id="sec" hidden>
+<div class="row" style="grid-template-columns:1fr 1fr">
 <div><label for="cls2">2nd Class</label><select id="cls2"></select></div>
-<div><label for="spec2">2nd Spec</label><select id="spec2"></select></div>
 <div><label for="race2">2nd Race</label><select id="race2"></select></div>
-</div></div>
+</div>
+<div class="row" style="grid-template-columns:1fr 1fr">
+<div><label for="spec2Pve">2nd PvE Spec</label><select id="spec2Pve"></select></div>
+<div><label for="spec2Pvp">2nd PvP Spec</label><select id="spec2Pvp"></select></div>
+</div>
+<label class="toggle"><input type="checkbox" id="samePvp2" checked> 2nd: Same as PvE Spec</label>
+</div>
 <label for="pin">PIN (optional, 4 digits)</label><input id="pin" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="Lets you edit from another phone">
 <button class="btn" id="submit" type="submit">Enlist</button>
 <div class="btns" id="editBtns" hidden><button class="btn ghost" type="button" id="cancel">Cancel</button><button class="btn danger" type="button" id="del">Remove me</button></div>
@@ -132,13 +142,14 @@ footer{text-align:center;font-size:12px;color:#6f6656;margin-top:20px}
 <section class="panel">
 <h2>The Council's Count</h2>
 <div class="stats"><div class="stat"><b id="sT">0</b><span>Tanks</span></div><div class="stat"><b id="sH">0</b><span>Healers</span></div><div class="stat"><b id="sD">0</b><span>DPS</span></div></div>
+<p class="hint" style="text-align:center;margin-top:10px">Role totals use <b>PvE Spec</b> (raid / PvE role).</p>
 <div class="fac" id="fac"></div>
 <div class="classes" id="classes"></div>
 </section>
 
 <section class="panel">
 <h2>The Roster <span id="cnt" class="sm"></span></h2>
-<table><thead><tr><th>Name</th><th>Class / Spec</th><th>Race</th></tr></thead><tbody id="tb"></tbody></table>
+<table><thead><tr><th>Name</th><th>Class · PvE / PvP</th><th>Race</th></tr></thead><tbody id="tb"></tbody></table>
 </section>
 <footer>Fan-made sign-up for friends. Not affiliated with Blizzard Entertainment. · If WeChat blocks the link, tap ⋮ → Open in browser.</footer>
 </main>
@@ -158,13 +169,19 @@ var FAC={};RACES.forEach(function(r){FAC[r[0]]=r[1]});
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s||"").replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function opts(sel,list,ph){sel.innerHTML='<option value="">'+ph+'</option>'+list.map(function(o){return'<option value="'+esc(o[0])+'">'+esc(o[1]||o[0])+'</option>'}).join("")}
-function wire(c,s,r){opts($(c),Object.keys(CLASSES).map(function(k){return[k]}),"Choose class");
- function upd(){var k=$(c).value,sv=$(s).value,rv=$(r).value;
-  opts($(s),k?CLASSES[k].s.map(function(x){return[x[0]]}):[],k?"Choose spec":"Pick class first");$(s).disabled=!k;
+function fillSpecs(sel,cls,keep){var k=cls||"",sv=keep||sel.value;
+ opts(sel,k?CLASSES[k].s.map(function(x){return[x[0]]}):[],k?"Choose spec":"Pick class first");sel.disabled=!k;if(sv)sel.value=sv;return sel.value}
+function wirePair(c,pve,pvp,r,sameId){
+ opts($(c),Object.keys(CLASSES).map(function(k){return[k]}),"Choose class");
+ function syncSame(){var same=$(sameId);if(!same)return;if(same.checked){$(pvp).value=$(pve).value;$(pvp).disabled=true}else{$(pvp).disabled=!$(c).value}}
+ function upd(){var k=$(c).value,rv=$(r).value,pv=$(pve).value,pp=$(pvp).value;
+  fillSpecs($(pve),k,pv);fillSpecs($(pvp),k,pp);
   opts($(r),k?RACES.filter(function(x){return x[2].split(" ").indexOf(k)>=0}).map(function(x){return[x[0],x[0]+(x[1]=="A"?" (Alliance)":" (Horde)")]}):[],k?"Choose race":"Pick class first");$(r).disabled=!k;
-  if(sv)$(s).value=sv;if(rv)$(r).value=rv;}
- $(c).onchange=upd;upd();return upd}
-var u1=wire("cls","spec","race"),u2=wire("cls2","spec2","race2");
+  if(rv)$(r).value=rv;syncSame()}
+ $(c).onchange=upd;$(pve).onchange=function(){syncSame()};
+ if($(sameId))$(sameId).onchange=function(){if(this.checked)$(pvp).value=$(pve).value;syncSame()};
+ upd();return upd}
+var u1=wirePair("cls","specPve","specPvp","race","samePvp"),u2=wirePair("cls2","spec2Pve","spec2Pvp","race2","samePvp2");
 $("has2").onchange=function(){$("sec").hidden=!this.checked};
 var ME=JSON.parse(localStorage.getItem("gnomercy_me")||"null"),ROSTER=[];
 var MANTLE="https://mantledb.sh/v2/gnomercy-wow-roster/roster";
@@ -174,16 +191,26 @@ function pub(e){var o={};for(var k in e){if(k!=="token"&&k!=="pin")o[k]=e[k]}ret
 function uuid(){if(crypto.randomUUID)return crypto.randomUUID();return"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c=="x"?r:(r&0x3|0x8)).toString(16)})}
 function tok(){var a=new Uint8Array(16);crypto.getRandomValues(a);return Array.from(a,function(b){return b.toString(16).padStart(2,"0")}).join("")}
 function clean(s,n){return String(s||"").replace(/[<>]/g,"").trim().slice(0,n||40)}
+function pveOf(e){return clean(e.specPve||e.spec)}
+function pvpOf(e){return clean(e.specPvp)}
 function mantleGet(){return fetch(MANTLE,{cache:"no-store"}).then(function(r){if(!r.ok)throw new Error("Could not load roster");return r.json()}).then(function(j){return Array.isArray(j.entries)?j.entries:(Array.isArray(j)?j:[])})}
 function mantleSave(entries){return fetch(MANTLE,{method:"POST",headers:{"Content-Type":"application/json","X-Mantle-Key":MKEY},body:JSON.stringify({entries:entries}),cache:"no-store"}).then(function(r){if(!r.ok)throw new Error("Could not save roster");return r.json()})}
+function fieldsFrom(b){
+  var specPve=clean(b.specPve||b.spec),specPvp=clean(b.specPvp);
+  if(b.samePvp||!specPvp)specPvp=specPve;
+  var spec2Pve=clean(b.spec2Pve||b.spec2),spec2Pvp=clean(b.spec2Pvp);
+  if(b.samePvp2||(spec2Pve&&!spec2Pvp))spec2Pvp=spec2Pve;
+  return{name:clean(b.name,24),race:clean(b.race),cls:clean(b.cls),spec:specPve,specPve:specPve,specPvp:specPvp,
+   race2:clean(b.race2),cls2:clean(b.cls2),spec2:spec2Pve,spec2Pve:spec2Pve,spec2Pvp:spec2Pvp,pin:clean(b.pin,8)}}
 function api(m,p,b){
   if(p==="/api/roster"&&m==="GET")return mantleGet().then(function(ents){return ents.map(pub)});
   if(p==="/api/entry"&&m==="POST"){
     return mantleGet().then(function(ents){
-      var name=clean(b.name,24),race=clean(b.race),cls=clean(b.cls),spec=clean(b.spec);
-      if(!name||!race||!cls||!spec)throw new Error("Name, race, class and spec are required.");
-      if(ents.some(function(e){return e.name.toLowerCase()===name.toLowerCase()}))throw new Error("That name is already on the roster. Use \"Edit by name\" to change it.");
-      var e={id:uuid(),token:tok(),pin:clean(b.pin,8),name:name,race:race,cls:cls,spec:spec,race2:clean(b.race2),cls2:clean(b.cls2),spec2:clean(b.spec2),updated:Date.now()};
+      var f=fieldsFrom(b);
+      if(!f.name||!f.race||!f.cls||!f.specPve||!f.specPvp)throw new Error("Name, race, class, PvE Spec and PvP Spec are required.");
+      if(ents.some(function(e){return e.name.toLowerCase()===f.name.toLowerCase()}))throw new Error("That name is already on the roster. Use \"Edit by name\" to change it.");
+      var e={id:uuid(),token:tok(),pin:f.pin,name:f.name,race:f.race,cls:f.cls,spec:f.specPve,specPve:f.specPve,specPvp:f.specPvp,
+        race2:f.race2,cls2:f.cls2,spec2:f.spec2Pve,spec2Pve:f.spec2Pve,spec2Pvp:f.spec2Pvp,updated:Date.now()};
       ents.push(e);return mantleSave(ents).then(function(){return{id:e.id,token:e.token}});
     });
   }
@@ -191,10 +218,11 @@ function api(m,p,b){
     return mantleGet().then(function(ents){
       var e=ents.filter(function(x){return x.id===b.id})[0];
       if(!e||e.token!==b.token)throw new Error("Not your entry.");
-      var name=clean(b.name,24),race=clean(b.race),cls=clean(b.cls),spec=clean(b.spec);
-      if(!name||!race||!cls||!spec)throw new Error("Missing fields.");
-      e.name=name;e.race=race;e.cls=cls;e.spec=spec;e.race2=clean(b.race2);e.cls2=clean(b.cls2);e.spec2=clean(b.spec2);e.updated=Date.now();
-      var pin=clean(b.pin,8);if(pin)e.pin=pin;
+      var f=fieldsFrom(b);
+      if(!f.name||!f.race||!f.cls||!f.specPve||!f.specPvp)throw new Error("Missing fields.");
+      e.name=f.name;e.race=f.race;e.cls=f.cls;e.spec=f.specPve;e.specPve=f.specPve;e.specPvp=f.specPvp;
+      e.race2=f.race2;e.cls2=f.cls2;e.spec2=f.spec2Pve;e.spec2Pve=f.spec2Pve;e.spec2Pvp=f.spec2Pvp;e.updated=Date.now();
+      if(f.pin)e.pin=f.pin;
       return mantleSave(ents).then(function(){return{ok:true}});
     });
   }
@@ -220,31 +248,45 @@ function api(m,p,b){
 function say(t,ok){var m=$("msg");m.textContent=t;m.className="msg "+(ok?"ok":"err")}
 function role(c,s){var x=(CLASSES[c]||{s:[]}).s.filter(function(y){return y[0]==s})[0];return x?x[1]:"D"}
 function icon(c){return'<svg class="ico" style="color:'+(CLASSES[c]||{}).c+'"><use href="#i-'+c+'"/></svg>'}
-function setv(id,v){$(id).value=v||""}
-function fill(e){setv("name",e.name);setv("cls",e.cls);u1();setv("spec",e.spec);setv("race",e.race);
- $("has2").checked=!!e.cls2;$("sec").hidden=!e.cls2;setv("cls2",e.cls2);u2();setv("spec2",e.spec2);setv("race2",e.race2)}
+function setv(id,v){if($(id))$(id).value=v||""}
+function specLine(pve,pvp){pve=pve||"";pvp=pvp||"";if(!pve&&!pvp)return"";if(!pvp)return esc(pve);if(pve===pvp)return esc(pve)+" / "+esc(pvp);return esc(pve)+" (PvE) · "+esc(pvp)+" (PvP)"}
+function fill(e){
+ setv("name",e.name);setv("cls",e.cls);u1();
+ var pve=pveOf(e),pvp=pvpOf(e);setv("specPve",pve);
+ var same=!pvp||pvp===pve;$("samePvp").checked=same;setv("specPvp",pvp||pve);$("specPvp").disabled=same;setv("race",e.race);
+ var has2=!!(e.cls2||e.spec2||e.spec2Pve);$("has2").checked=has2;$("sec").hidden=!has2;
+ setv("cls2",e.cls2);u2();
+ var pve2=clean(e.spec2Pve||e.spec2),pvp2=clean(e.spec2Pvp);setv("spec2Pve",pve2);
+ var same2=!pvp2||pvp2===pve2;$("samePvp2").checked=same2;setv("spec2Pvp",pvp2||pve2);$("spec2Pvp").disabled=same2;setv("race2",e.race2)}
 function mode(){var e=ME&&ROSTER.filter(function(x){return x.id==ME.id})[0];
  if(ME&&!e&&ROSTER.length>=0&&loaded){ME=null;localStorage.removeItem("gnomercy_me")}
  $("formTitle").textContent=e?"Amend Your Enlistment":"Enlist in the Roster";$("submit").textContent=e?"Save changes":"Enlist";$("editBtns").hidden=!e;
  $("mine").innerHTML=e?'<div class="mine">You are enlisted as <b>'+esc(e.name)+'</b>. Change anything below and save.</div>':"";return e}
 var loaded=false,editingFilled=false;
 function render(){var T=0,H=0,D=0,A=0,Ho=0,pc={};
- ROSTER.forEach(function(e){var r=role(e.cls,e.spec);if(r=="T")T++;else if(r=="H")H++;else D++;if(FAC[e.race]=="A")A++;else Ho++;pc[e.cls]=(pc[e.cls]||0)+1});
+ ROSTER.forEach(function(e){var r=role(e.cls,pveOf(e));if(r=="T")T++;else if(r=="H")H++;else D++;if(FAC[e.race]=="A")A++;else Ho++;pc[e.cls]=(pc[e.cls]||0)+1});
  $("sT").textContent=T;$("sH").textContent=H;$("sD").textContent=D;
  var n=A+Ho;$("fac").innerHTML=n?'<div class="fa" style="flex:'+(A||0.0001)+'">'+(A?"Alliance "+A:"")+'</div><div class="fh" style="flex:'+(Ho||0.0001)+'">'+(Ho?"Horde "+Ho:"")+'</div>':'<div style="flex:1;color:#9c917a">No faction yet</div>';
  $("classes").innerHTML=Object.keys(CLASSES).map(function(k){return'<span class="chip" style="color:'+CLASSES[k].c+'">'+icon(k)+k+' <b>'+(pc[k]||0)+'</b></span>'}).join("");
  $("cnt").textContent=ROSTER.length?"("+ROSTER.length+")":"";
  $("tb").innerHTML=ROSTER.length?ROSTER.map(function(e){var c=(CLASSES[e.cls]||{}).c||"#ccc";
-  return'<tr style="--c:'+c+'"><td class="nm">'+esc(e.name)+(ME&&ME.id==e.id?' <span class="sm">(you)</span>':'')+'</td><td><div class="cl">'+icon(e.cls)+esc(e.spec)+' '+esc(e.cls)+'</div>'+(e.cls2?'<div class="alt">2nd: '+esc([e.spec2,e.race2,e.cls2].filter(Boolean).join(" "))+'</div>':'')+'</td><td><span class="f-'+(FAC[e.race]||"")+'">'+esc(e.race)+'</span></td></tr>'}).join(""):'<tr><td colspan="3" class="empty" style="border:0">The roster awaits its first hero.</td></tr>';
+  var line=specLine(pveOf(e),pvpOf(e));
+  var alt="";if(e.cls2){var l2=specLine(clean(e.spec2Pve||e.spec2),clean(e.spec2Pvp));alt='<div class="alt">2nd: '+esc(e.cls2)+(l2?" · "+l2:"")+(e.race2?" · "+esc(e.race2):"")+'</div>'}
+  return'<tr style="--c:'+c+'"><td class="nm">'+esc(e.name)+(ME&&ME.id==e.id?' <span class="sm">(you)</span>':'')+'</td><td><div class="cl">'+icon(e.cls)+esc(e.cls)+' · '+line+'</div>'+alt+'</td><td><span class="f-'+(FAC[e.race]||"")+'">'+esc(e.race)+'</span></td></tr>'}).join(""):'<tr><td colspan="3" class="empty" style="border:0">The roster awaits its first hero.</td></tr>';
  var e=mode();if(e&&!editingFilled){fill(e);editingFilled=true}}
 function load(){return api("GET","/api/roster").then(function(r){ROSTER=r;loaded=true;render()}).catch(function(){})}
-function val(){return{name:$("name").value.trim(),cls:$("cls").value,spec:$("spec").value,race:$("race").value,pin:$("pin").value.trim(),
- cls2:$("has2").checked?$("cls2").value:"",spec2:$("has2").checked?$("spec2").value:"",race2:$("has2").checked?$("race2").value:""}}
-$("f").onsubmit=function(ev){ev.preventDefault();var v=val();if(!v.name||!v.cls||!v.spec||!v.race)return say("Please fill in name, class, spec and race.");
+function val(){var same=$("samePvp").checked,same2=$("samePvp2").checked;
+ return{name:$("name").value.trim(),cls:$("cls").value,race:$("race").value,pin:$("pin").value.trim(),
+  specPve:$("specPve").value,specPvp:same?$("specPve").value:$("specPvp").value,samePvp:same,
+  cls2:$("has2").checked?$("cls2").value:"",race2:$("has2").checked?$("race2").value:"",
+  spec2Pve:$("has2").checked?$("spec2Pve").value:"",spec2Pvp:$("has2").checked?(same2?$("spec2Pve").value:$("spec2Pvp").value):"",samePvp2:same2}}
+$("f").onsubmit=function(ev){ev.preventDefault();var v=val();
+ if(!v.name||!v.cls||!v.specPve||!v.specPvp||!v.race)return say("Please fill in name, class, race, PvE Spec and PvP Spec.");
+ if($("has2").checked&&v.cls2&&(!v.spec2Pve||!v.spec2Pvp||!v.race2))return say("2nd choice needs class, race, PvE Spec and PvP Spec.");
  var p=ME&&mode()?api("PUT","/api/entry",Object.assign(v,{id:ME.id,token:ME.token})).then(function(){say("Saved. The Council approves.",1)})
  :api("POST","/api/entry",v).then(function(r){ME=r;localStorage.setItem("gnomercy_me",JSON.stringify(r));editingFilled=true;say("You are enlisted. Welcome to GNOMERCY.",1)});
  p.then(load).catch(function(e){say(e.message)})};
-$("del").onclick=function(){if(!confirm("Remove your entry from the roster?"))return;api("DELETE","/api/entry",{id:ME.id,token:ME.token}).then(function(){ME=null;localStorage.removeItem("gnomercy_me");editingFilled=false;$("f").reset();u1();u2();$("sec").hidden=true;say("Your entry was removed.",1);load()}).catch(function(e){say(e.message)})};
+$("del").onclick=function(){if(!confirm("Remove your entry from the roster?"))return;api("DELETE","/api/entry",{id:ME.id,token:ME.token}).then(function(){ME=null;localStorage.removeItem("gnomercy_me");editingFilled=false;$("f").reset();$("samePvp").checked=true;$("samePvp2").checked=true;u1();u2();$("sec").hidden=true;say("Your entry was removed.",1);load()}).catch(function(e){say(e.message)})};
 $("cancel").onclick=function(){var e=mode();if(e)fill(e)};
 $("claim").onclick=function(){api("POST","/api/claim",{name:$("cname").value,pin:$("cpin").value}).then(function(r){ME=r;localStorage.setItem("gnomercy_me",JSON.stringify(r));editingFilled=false;say("Found you. Edit your entry above.",1);load();scrollTo(0,$("formPanel").offsetTop)}).catch(function(e){say(e.message)})};
 (function(){var s="";for(var i=0;i<14;i++)s+='<i class="spark" style="left:'+(Math.random()*100)+'%;animation-duration:'+(7+Math.random()*8)+'s;animation-delay:'+(Math.random()*10)+'s"></i>';$("sparks").innerHTML=s})();
